@@ -1,18 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Snake Neon Arcade</title>
     <style>
+      * {
+        box-sizing: border-box;
+        touch-action: manipulation;
+      }
       body {
         margin: 0;
         background: #090d16;
@@ -23,18 +19,21 @@
         align-items: center;
         justify-content: center;
         min-height: 100vh;
+        padding: 10px;
+        user-select: none;
       }
       h1 {
-        margin: 0 0 10px 0;
+        margin: 0 0 8px 0;
+        font-size: 24px;
         color: #38bdf8;
         text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
       }
       .painel {
         display: flex;
-        gap: 30px;
-        font-size: 20px;
+        gap: 25px;
+        font-size: 18px;
         font-weight: bold;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       }
       .pontos { color: #4ade80; }
       .recorde { color: #facc15; }
@@ -43,11 +42,48 @@
         border: 3px solid #1e293b;
         border-radius: 12px;
         box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+        max-width: 92vw;
+        max-height: 48vh;
+        touch-action: none;
+      }
+      /* Botões táteis virtuais para o telemóvel */
+      .controlo-virtual {
+        margin-top: 14px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      .linha-botoes {
+        display: flex;
+        gap: 14px;
+      }
+      .btn-direcao {
+        width: 58px;
+        height: 58px;
+        background: #1e293b;
+        color: #38bdf8;
+        border: 2px solid #38bdf8;
+        border-radius: 50%;
+        font-size: 22px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+        transition: 0.1s;
+      }
+      .btn-direcao:active {
+        background: #38bdf8;
+        color: #090d16;
+        transform: scale(0.92);
       }
       .instrucoes {
-        margin-top: 15px;
+        margin-top: 8px;
         color: #94a3b8;
-        font-size: 14px;
+        font-size: 12px;
+        text-align: center;
       }
     </style>
   </head>
@@ -59,10 +95,20 @@
       <div>Recorde: <span id="recorde" class="recorde">0</span></div>
     </div>
 
-    <!-- A tela onde o jogo é desenhado em tempo real -->
+    <!-- Área gráfica do jogo -->
     <canvas id="jogo" width="400" height="400"></canvas>
 
-    <div class="instrucoes">Controle a cobrinha usando as setas do teclado (⬆️ ⬇️ ⬅️ ➡️).</div>
+    <!-- Comandos no ecrã para telemóveis -->
+    <div class="controlo-virtual">
+      <button class="btn-direcao" onclick="mudarDirecao('ArrowUp')">⬆️</button>
+      <div class="linha-botoes">
+        <button class="btn-direcao" onclick="mudarDirecao('ArrowLeft')">⬅️</button>
+        <button class="btn-direcao" onclick="mudarDirecao('ArrowDown')">⬇️</button>
+        <button class="btn-direcao" onclick="mudarDirecao('ArrowRight')">➡️</button>
+      </div>
+    </div>
+
+    <div class="instrucoes">Jogue com os botões táteis no ecrã ou com as setas do teclado no PC.</div>
 
     <script>
       const canvas = document.getElementById("jogo");
@@ -79,17 +125,16 @@
       let jogoAtivo = true;
 
       function desenhar() {
-        // 1. Limpa a tela a cada quadro
         ctx.fillStyle = "#020617";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 2. Desenha a fruta com brilho neon vermelho
+        // Fruta com brilho néon
         ctx.fillStyle = "#f43f5e";
         ctx.shadowBlur = 10;
         ctx.shadowColor = "#f43f5e";
         ctx.fillRect(comida.x * tamanhoGrade, comida.y * tamanhoGrade, tamanhoGrade - 2, tamanhoGrade - 2);
 
-        // 3. Desenha a cobra com corpo neon azul e cabeça verde
+        // Cobra néon
         cobra.forEach((parte, index) => {
           ctx.fillStyle = index === 0 ? "#4ade80" : "#38bdf8";
           ctx.shadowBlur = 8;
@@ -97,7 +142,6 @@
           ctx.fillRect(parte.x * tamanhoGrade, parte.y * tamanhoGrade, tamanhoGrade - 2, tamanhoGrade - 2);
         });
 
-        // Reseta o efeito de sombra para não pesar o processamento
         ctx.shadowBlur = 0;
       }
 
@@ -109,13 +153,13 @@
           y: cobra[0].y + direcao.y
         };
 
-        // Colisão com as paredes
+        // Colisão com as margens
         if (cabeca.x < 0 || cabeca.x >= totalBlocos || cabeca.y < 0 || cabeca.y >= totalBlocos) {
           finalizarJogo();
           return;
         }
 
-        // Colisão com o próprio corpo
+        // Colisão com o corpo
         for (let i = 0; i < cobra.length; i++) {
           if (cabeca.x === cobra[i].x && cabeca.y === cobra[i].y) {
             finalizarJogo();
@@ -125,7 +169,6 @@
 
         cobra.unshift(cabeca);
 
-        // Verifica se comeu a fruta
         if (cabeca.x === comida.x && cabeca.y === comida.y) {
           pontos += 10;
           document.getElementById("pontuacao").innerText = pontos;
@@ -148,7 +191,7 @@
 
       function finalizarJogo() {
         jogoAtivo = false;
-        alert("Fim de Jogo! Pontuação obtida: " + pontos);
+        alert("Fim de Jogo! Pontos: " + pontos);
         cobra = [{ x: 10, y: 10 }];
         direcao = { x: 0, y: 0 };
         pontos = 0;
@@ -157,9 +200,9 @@
         jogoAtivo = true;
       }
 
-      // Escuta os comandos das teclas direcionais
-      window.addEventListener("keydown", (e) => {
-        switch (e.key) {
+      // Função universal de mudança de direção
+      function mudarDirecao(tecla) {
+        switch (tecla) {
           case "ArrowUp":
             if (direcao.y !== 1) direcao = { x: 0, y: -1 };
             break;
@@ -170,21 +213,47 @@
             if (direcao.x !== 1) direcao = { x: -1, y: 0 };
             break;
           case "ArrowRight":
-            if (direcao.x !== 1) direcao = { x: 1, y: 0 };
+            if (direcao.x !== -1) direcao = { x: 1, y: 0 };
             break;
+        }
+      }
+
+      // Suporte para o teclado físico (no computador)
+      window.addEventListener("keydown", (e) => {
+        mudarDirecao(e.key);
+      });
+
+      // Suporte a gestos com o dedo diretamente no ecrã (Swipe)
+      let toqueInicioX = 0;
+      let toqueInicioY = 0;
+
+      canvas.addEventListener("touchstart", (e) => {
+        toqueInicioX = e.touches[0].clientX;
+        toqueInicioY = e.touches[0].clientY;
+      }, { passive: false });
+
+      canvas.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+      }, { passive: false });
+
+      canvas.addEventListener("touchend", (e) => {
+        const difX = e.changedTouches[0].clientX - toqueInicioX;
+        const difY = e.changedTouches[0].clientY - toqueInicioY;
+
+        if (Math.abs(difX) > Math.abs(difY)) {
+          if (difX > 25) mudarDirecao("ArrowRight");
+          else if (difX < -25) mudarDirecao("ArrowLeft");
+        } else {
+          if (difY > 25) mudarDirecao("ArrowDown");
+          else if (difY < -25) mudarDirecao("ArrowUp");
         }
       });
 
-      // Loop do jogo: atualiza o movimento e redesenha a cada 100ms (10 vezes por segundo)
+      // Ciclo de atualização contínuo
       setInterval(() => {
         moverCobra();
         desenhar();
       }, 100);
     </script>
   </body>
-</html>
-
-  </body>
-</html>
-</body>
 </html>
