@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake Neon Arcade</title>
+    <style>
+      body {
+        margin: 0;
+        background: #090d16;
+        color: #f8fafc;
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      h1 {
+        margin: 0 0 10px 0;
+        color: #38bdf8;
+        text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+      }
+      .painel {
+        display: flex;
+        gap: 30px;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 12px;
+      }
+      .pontos { color: #4ade80; }
+      .recorde { color: #facc15; }
+      canvas {
+        background-color: #020617;
+        border: 3px solid #1e293b;
+        border-radius: 12px;
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+      }
+      .instrucoes {
+        margin-top: 15px;
+        color: #94a3b8;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Snake Arcade 🎮</h1>
+    
+    <div class="painel">
+      <div>Pontos: <span id="pontuacao" class="pontos">0</span></div>
+      <div>Recorde: <span id="recorde" class="recorde">0</span></div>
+    </div>
+
+    <!-- A tela onde o jogo é desenhado em tempo real -->
+    <canvas id="jogo" width="400" height="400"></canvas>
+
+    <div class="instrucoes">Controle a cobrinha usando as setas do teclado (⬆️ ⬇️ ⬅️ ➡️).</div>
+
+    <script>
+      const canvas = document.getElementById("jogo");
+      const ctx = canvas.getContext("2d");
+
+      const tamanhoGrade = 20;
+      const totalBlocos = canvas.width / tamanhoGrade;
+
+      let cobra = [{ x: 10, y: 10 }];
+      let direcao = { x: 0, y: 0 };
+      let comida = { x: 15, y: 15 };
+      let pontos = 0;
+      let recorde = 0;
+      let jogoAtivo = true;
+
+      function desenhar() {
+        // 1. Limpa a tela a cada quadro
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 2. Desenha a fruta com brilho neon vermelho
+        ctx.fillStyle = "#f43f5e";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#f43f5e";
+        ctx.fillRect(comida.x * tamanhoGrade, comida.y * tamanhoGrade, tamanhoGrade - 2, tamanhoGrade - 2);
+
+        // 3. Desenha a cobra com corpo neon azul e cabeça verde
+        cobra.forEach((parte, index) => {
+          ctx.fillStyle = index === 0 ? "#4ade80" : "#38bdf8";
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.fillRect(parte.x * tamanhoGrade, parte.y * tamanhoGrade, tamanhoGrade - 2, tamanhoGrade - 2);
+        });
+
+        // Reseta o efeito de sombra para não pesar o processamento
+        ctx.shadowBlur = 0;
+      }
+
+      function moverCobra() {
+        if (!jogoAtivo || (direcao.x === 0 && direcao.y === 0)) return;
+
+        const cabeca = {
+          x: cobra[0].x + direcao.x,
+          y: cobra[0].y + direcao.y
+        };
+
+        // Colisão com as paredes
+        if (cabeca.x < 0 || cabeca.x >= totalBlocos || cabeca.y < 0 || cabeca.y >= totalBlocos) {
+          finalizarJogo();
+          return;
+        }
+
+        // Colisão com o próprio corpo
+        for (let i = 0; i < cobra.length; i++) {
+          if (cabeca.x === cobra[i].x && cabeca.y === cobra[i].y) {
+            finalizarJogo();
+            return;
+          }
+        }
+
+        cobra.unshift(cabeca);
+
+        // Verifica se comeu a fruta
+        if (cabeca.x === comida.x && cabeca.y === comida.y) {
+          pontos += 10;
+          document.getElementById("pontuacao").innerText = pontos;
+          if (pontos > recorde) {
+            recorde = pontos;
+            document.getElementById("recorde").innerText = recorde;
+          }
+          gerarComida();
+        } else {
+          cobra.pop();
+        }
+      }
+
+      function gerarComida() {
+        comida = {
+          x: Math.floor(Math.random() * totalBlocos),
+          y: Math.floor(Math.random() * totalBlocos)
+        };
+      }
+
+      function finalizarJogo() {
+        jogoAtivo = false;
+        alert("Fim de Jogo! Pontuação obtida: " + pontos);
+        cobra = [{ x: 10, y: 10 }];
+        direcao = { x: 0, y: 0 };
+        pontos = 0;
+        document.getElementById("pontuacao").innerText = pontos;
+        gerarComida();
+        jogoAtivo = true;
+      }
+
+      // Escuta os comandos das teclas direcionais
+      window.addEventListener("keydown", (e) => {
+        switch (e.key) {
+          case "ArrowUp":
+            if (direcao.y !== 1) direcao = { x: 0, y: -1 };
+            break;
+          case "ArrowDown":
+            if (direcao.y !== -1) direcao = { x: 0, y: 1 };
+            break;
+          case "ArrowLeft":
+            if (direcao.x !== 1) direcao = { x: -1, y: 0 };
+            break;
+          case "ArrowRight":
+            if (direcao.x !== 1) direcao = { x: 1, y: 0 };
+            break;
+        }
+      });
+
+      // Loop do jogo: atualiza o movimento e redesenha a cada 100ms (10 vezes por segundo)
+      setInterval(() => {
+        moverCobra();
+        desenhar();
+      }, 100);
+    </script>
+  </body>
+</html>
+
+  </body>
+</html>
+</body>
+</html>
