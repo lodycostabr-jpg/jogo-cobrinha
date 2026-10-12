@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Snake Neon Arcade</title>
+    <title>Snake Neon Arcade Pro</title>
     <style>
       * {
         box-sizing: border-box;
@@ -23,32 +23,32 @@
         user-select: none;
       }
       h1 {
-        margin: 0 0 8px 0;
+        margin: 0 0 6px 0;
         font-size: 24px;
         color: #38bdf8;
         text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
       }
       .painel {
         display: flex;
-        gap: 25px;
-        font-size: 18px;
+        gap: 20px;
+        font-size: 16px;
         font-weight: bold;
         margin-bottom: 8px;
       }
       .pontos { color: #4ade80; }
       .recorde { color: #facc15; }
+      .nivel { color: #f43f5e; }
       canvas {
         background-color: #020617;
         border: 3px solid #1e293b;
         border-radius: 12px;
         box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
         max-width: 92vw;
-        max-height: 48vh;
+        max-height: 46vh;
         touch-action: none;
       }
-      /* Botões táteis virtuais para o telemóvel */
       .controlo-virtual {
-        margin-top: 14px;
+        margin-top: 12px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -72,7 +72,6 @@
         justify-content: center;
         cursor: pointer;
         box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-        transition: 0.1s;
       }
       .btn-direcao:active {
         background: #38bdf8;
@@ -88,17 +87,16 @@
     </style>
   </head>
   <body>
-    <h1>Snake Arcade 🎮</h1>
+    <h1>Snake Arcade Pro 🎮</h1>
     
     <div class="painel">
       <div>Pontos: <span id="pontuacao" class="pontos">0</span></div>
       <div>Recorde: <span id="recorde" class="recorde">0</span></div>
+      <div>Nível: <span id="nivel" class="nivel">1</span></div>
     </div>
 
-    <!-- Área gráfica do jogo -->
     <canvas id="jogo" width="400" height="400"></canvas>
 
-    <!-- Comandos no ecrã para telemóveis -->
     <div class="controlo-virtual">
       <button class="btn-direcao" onclick="mudarDirecao('ArrowUp')">⬆️</button>
       <div class="linha-botoes">
@@ -108,7 +106,7 @@
       </div>
     </div>
 
-    <div class="instrucoes">Jogue com os botões táteis no ecrã ou com as setas do teclado no PC.</div>
+    <div class="instrucoes">Deslize o dedo ou use os botões. No PC: setas do teclado.</div>
 
     <script>
       const canvas = document.getElementById("jogo");
@@ -121,20 +119,73 @@
       let direcao = { x: 0, y: 0 };
       let comida = { x: 15, y: 15 };
       let pontos = 0;
-      let recorde = 0;
+      let nivel = 1;
       let jogoAtivo = true;
 
+      // Recuperar o recorde guardado no navegador via localStorage
+      let recorde = Number(localStorage.getItem("snake_recorde_salvo")) || 0;
+      document.getElementById("recorde").innerText = recorde;
+
+      // Velocidade inicial (130 milissegundos por quadro)
+      const velocidadeInicial = 130;
+      let velocidadeAtual = velocidadeInicial;
+      let loopTimer = null;
+
+      // === SISTEMA DE ÁUDIO RETRO (Web Audio API) ===
+      let audioCtx = null;
+      function iniciarAudio() {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      }
+
+      function somComer() {
+        iniciarAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(450, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      }
+
+      function somDerrota() {
+        iniciarAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(70, audioCtx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      }
+
+      // === DESENHO NO CANVAS ===
       function desenhar() {
         ctx.fillStyle = "#020617";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Fruta com brilho néon
+        // Fruta
         ctx.fillStyle = "#f43f5e";
         ctx.shadowBlur = 10;
         ctx.shadowColor = "#f43f5e";
         ctx.fillRect(comida.x * tamanhoGrade, comida.y * tamanhoGrade, tamanhoGrade - 2, tamanhoGrade - 2);
 
-        // Cobra néon
+        // Cobrinha
         cobra.forEach((parte, index) => {
           ctx.fillStyle = index === 0 ? "#4ade80" : "#38bdf8";
           ctx.shadowBlur = 8;
@@ -145,6 +196,7 @@
         ctx.shadowBlur = 0;
       }
 
+      // === LÓGICA E MOVIMENTO ===
       function moverCobra() {
         if (!jogoAtivo || (direcao.x === 0 && direcao.y === 0)) return;
 
@@ -153,13 +205,13 @@
           y: cobra[0].y + direcao.y
         };
 
-        // Colisão com as margens
+        // Colisão com bordas
         if (cabeca.x < 0 || cabeca.x >= totalBlocos || cabeca.y < 0 || cabeca.y >= totalBlocos) {
           finalizarJogo();
           return;
         }
 
-        // Colisão com o corpo
+        // Colisão com o próprio corpo
         for (let i = 0; i < cobra.length; i++) {
           if (cabeca.x === cobra[i].x && cabeca.y === cobra[i].y) {
             finalizarJogo();
@@ -169,13 +221,24 @@
 
         cobra.unshift(cabeca);
 
+        // Ao apanhar a fruta
         if (cabeca.x === comida.x && cabeca.y === comida.y) {
           pontos += 10;
+          somComer();
           document.getElementById("pontuacao").innerText = pontos;
+
+          // Atualização e gravação permanente do recorde
           if (pontos > recorde) {
             recorde = pontos;
             document.getElementById("recorde").innerText = recorde;
+            localStorage.setItem("snake_recorde_salvo", recorde);
           }
+
+          // Aumento de dificuldade: acelera a cobra e sobe de nível
+          nivel = Math.floor(pontos / 30) + 1;
+          document.getElementById("nivel").innerText = nivel;
+          velocidadeAtual = Math.max(55, velocidadeInicial - (nivel - 1) * 8);
+
           gerarComida();
         } else {
           cobra.pop();
@@ -191,17 +254,26 @@
 
       function finalizarJogo() {
         jogoAtivo = false;
-        alert("Fim de Jogo! Pontos: " + pontos);
-        cobra = [{ x: 10, y: 10 }];
-        direcao = { x: 0, y: 0 };
-        pontos = 0;
-        document.getElementById("pontuacao").innerText = pontos;
-        gerarComida();
-        jogoAtivo = true;
+        somDerrota();
+        clearTimeout(loopTimer);
+
+        setTimeout(() => {
+          alert("Fim de Jogo! Pontuação final: " + pontos);
+          cobra = [{ x: 10, y: 10 }];
+          direcao = { x: 0, y: 0 };
+          pontos = 0;
+          nivel = 1;
+          velocidadeAtual = velocidadeInicial;
+          document.getElementById("pontuacao").innerText = pontos;
+          document.getElementById("nivel").innerText = nivel;
+          gerarComida();
+          jogoAtivo = true;
+          executarCiclo();
+        }, 120);
       }
 
-      // Função universal de mudança de direção
       function mudarDirecao(tecla) {
+        iniciarAudio();
         switch (tecla) {
           case "ArrowUp":
             if (direcao.y !== 1) direcao = { x: 0, y: -1 };
@@ -213,23 +285,21 @@
             if (direcao.x !== 1) direcao = { x: -1, y: 0 };
             break;
           case "ArrowRight":
-            if (direcao.x !== -1) direcao = { x: 1, y: 0 };
+            if (direcao.x !== 1) direcao = { x: 1, y: 0 };
             break;
         }
       }
 
-      // Suporte para o teclado físico (no computador)
       window.addEventListener("keydown", (e) => {
         mudarDirecao(e.key);
       });
 
-      // Suporte a gestos com o dedo diretamente no ecrã (Swipe)
-      let toqueInicioX = 0;
-      let toqueInicioY = 0;
-
+      // Gestos táteis no telemóvel
+      let toqueX = 0;
+      let toqueY = 0;
       canvas.addEventListener("touchstart", (e) => {
-        toqueInicioX = e.touches[0].clientX;
-        toqueInicioY = e.touches[0].clientY;
+        toqueX = e.touches[0].clientX;
+        toqueY = e.touches[0].clientY;
       }, { passive: false });
 
       canvas.addEventListener("touchmove", (e) => {
@@ -237,8 +307,8 @@
       }, { passive: false });
 
       canvas.addEventListener("touchend", (e) => {
-        const difX = e.changedTouches[0].clientX - toqueInicioX;
-        const difY = e.changedTouches[0].clientY - toqueInicioY;
+        const difX = e.changedTouches[0].clientX - toqueX;
+        const difY = e.changedTouches[0].clientY - toqueY;
 
         if (Math.abs(difX) > Math.abs(difY)) {
           if (difX > 25) mudarDirecao("ArrowRight");
@@ -249,11 +319,16 @@
         }
       });
 
-      // Ciclo de atualização contínuo
-      setInterval(() => {
+      // Ciclo dinâmico com temporização variável (dificuldade)
+      function executarCiclo() {
         moverCobra();
         desenhar();
-      }, 100);
+        if (jogoAtivo) {
+          loopTimer = setTimeout(executarCiclo, velocidadeAtual);
+        }
+      }
+
+      executarCiclo();
     </script>
   </body>
 </html>
